@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Accident Detection</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>Accident Detection System</h1>
+
+    <div>
+        <h2>Upload Image</h2>
+        <input type="file" id="upload" accept="image/*">
+        <button onclick="uploadImage()">Predict</button>
+    </div>
+
+    <div>
+        <h2>Use Webcam</h2>
+        <video id="webcam" autoplay></video>
+        <button onclick="predictFromWebcam()">Capture & Predict</button>
+    </div>
+
+    <h3 id="result"></h3>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const constraints = { video: true };
+
+        navigator.mediaDevices.getUserMedia(constraints)
+            .then(stream => { video.srcObject = stream; });
+
+        async function uploadImage() {
+            const input = document.getElementById('upload');
+            if (!input.files.length) return alert("Please upload an image.");
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const res = await fetch("/predict_upload/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ image: reader.result })
+                });
+                const data = await res.json();
+                document.getElementById("result").innerText = `Prediction: ${data.prediction}, Confidence: ${data.confidence}`;
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+
+        async function predictFromWebcam() {
+            const canvas = document.createElement("canvas");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const dataUrl = canvas.toDataURL("image/jpeg");
+
+            const res = await fetch("/predict_webcam/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ image: dataUrl })
+            });
+            const data = await res.json();
+            document.getElementById("result").innerText = `Prediction: ${data.prediction}, Confidence: ${data.confidence}`;
+        }
+    </script>
+</body>
+</html>
